@@ -1,47 +1,39 @@
-import mysql from "mysql";
+import {actionLog} from "../logger";
 
-export function createStudent(body, authtoken, db){
+let mysql = require('mysql')
 
-    let conn = mysql.createConnection({
-        host: db['host'],
-        user: db['user'],
-        password: db['pass'],
-        database: db['db']
+export async function createStudent(body, authtokend: string, db, query) {
+    let failed = false;
+    let reason = ""
 
-    })
-    let sql = "SELECT * FROM `students` WHERE `id` = " + id
-    let res = "";
+    if (body['name'] === "" || body['name'] == null || body['name'] === undefined) {
+        failed = true
+        reason = "Name is empty"
+    }
 
-    conn.query(sql,  (error, result)=>{
-        result = result[0]
-        console.log(result['id'])
-    })
+    if (body['class'] === "" || body['class'] == null || body['class'] === undefined) {
+        failed = true
+        reason = "Class is empty"
+    }
 
-    console.log(res)
-
-
-    try {
-        let authdata = atob(authtoken.slice(6)).split(":")
-        let username = authdata[0]
-        let password = authdata[1]
-        return "function getStudent() | username: " + username + " | password: " + password
-    } catch (error) {
-        return JSON.stringify(
-            {
-                "error":{
-                    "code":1000,
-                    "message":"Error while parsing Username and Password",
-                    "description": "Perhaps the authtoken provided from the request is not valid."
-                },
-                "data":{
-                    "body":body,
-                    "authtoken":authtoken,
-                    "function":"getStudent()"
-                }
-            }
-        )
+    if (!failed) {
+        await query(db, "INSERT INTO `students`(`name`, `class`) VALUES ('" + body['name'] + "','" + body['class'] + "')").then((result) => {
+            body['id'] = result['insertId']
+        })
     }
 
 
-    return "function createStudent()";
+    actionLog("CREATE STUDENT", "Name: " + body['name'] + " | Class: " + body['class'] + " | ID: " + body['id'] + " | Success: " + !failed + (failed ? " | Reason: " + reason : ""))
+
+    return JSON.stringify(
+        {
+            "status": failed ? "failed" : "success",
+            "message": failed ? reason : "Student created",
+            "data": {
+                "id": body['id'] ?? false,
+                "name": body['name'] ?? false,
+                "class": body['class'] ?? false
+            }
+        }
+    )
 }

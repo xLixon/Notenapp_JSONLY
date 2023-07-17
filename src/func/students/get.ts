@@ -1,53 +1,46 @@
+import {actionLog} from "../logger";
+
 let mysql = require('mysql')
 
-export function getStudent(id: number, authtoken: string, db){
+export async function getStudent(id: number, authtoken: string, db, query) {
 
-    let conn = mysql.createConnection({
-        host: db['host'],
-        user: db['user'],
-        password: db['pass'],
-        database: db['db']
+    let data;
+    let failed = false
+    let reason = ""
 
-    })
-    let sql = "SELECT * FROM `students` WHERE `id` = " + id
-    let res = "";
-
-    conn.query(sql,  (error, result)=>{
-        result = result[0]
-        console.log(result['id'])
-    })
-
-    console.log(res)
+    await query(db, "SELECT * FROM `students` WHERE `id` = " + id)
+        .then((result) => {
+                data = result[0]
+        })
 
 
 
-    /*try {
-        let authdata = atob(authtoken.slice(6)).split(":")
-        let username = authdata[0]
-        let password = authdata[1]
-        // return "function getStudent() | username: " + username + " | password: " + password
+    if(data == undefined) {
+        failed = true
+        reason = "Student not found"
+    }
+    actionLog("GET STUDENT", "ID : " + id + " | Success: " + !failed + (failed ? " | Reason: " + reason : ""))
 
 
+    let name = null
+    if(!failed || data['name'] == undefined || data['name'] != null) {
+        name = data['name']
+    }
 
+    let classs = null
+    if(!failed || data['class'] == undefined || data['class'] != null) {
+        classs = data['class']
+    }
 
-
-
-    } catch (error) {
-        return JSON.stringify(
-            {
-                "error":{
-                    "code":1000,
-                    "message":"Error while parsing Username and Password",
-                    "description": "Perhaps the authtoken provided from the request is not valid."
-                },
-                "data":{
-                    "id":id,
-                    "authtoken":authtoken,
-                    "function":"getStudent()"
-                }
+    return JSON.stringify(
+        {
+            "status": failed ? "failed" : "success",
+            "message": failed ? reason : "Student found",
+            "data": {
+                "id": id,
+                "name":name,
+                "class": classs
             }
-        )
-    }*/
-
-    return null
+        }
+    )
 }
